@@ -1,0 +1,3722 @@
+{
+  "openapi": "3.0.2",
+  "info": {
+    "title": "Digital Value Services API",
+    "version": "1.0.1",
+    "x-logo": {
+      "url": "https://dvs-api-doc.dtone.com/images/dtone.png"
+    },
+    "description": "# Overview\n\nWelcome to the Digital Value Services API reference.\n\nThis API serves as the primary gateway to facilitate digital value transfers through [DT One](https://www.dtone.com), a leading global network covering more than 160 countries and 550 mobile operators.\n\nThe Digital Value Services API is organized according to [REST](https://en.wikipedia.org/wiki/Representational_state_transfer) principles, using [JSON](https://en.wikipedia.org/wiki/JSON) as format for data interchange, and provides the following services:\n  - [Discovery Services](#tag/Services)\n  - [Transactions Services](#tag/Transactions)\n  - [Account Services](#tag/Balances)\n  - [Look-Up Services](#tag/Mobile-Number)\n\nIf you have any questions and/or suggestions related to our API, please do not hesitate to send an email to the [DVS API support team](mailto:dvs-api-support@dtone.com).\n\n## Environments\n\nTo facilitate integration to the API and for testing, two distinct environments are provided.\n\n| Environment    | API                                                         | Web Portal                                                         |\n| ---            | ---                                                         | ---                                                                |\n| Production     | [Production API](https://dvs-api.dtone.com/v1/)             | [Production Portal](https://dvs-portal-app.dtone.com/)             |\n| Pre-Production | [Pre-Production API](https://preprod-dvs-api.dtone.com/v1/) | [Pre-Production Portal](https://preprod-dvs-portal-app.dtone.com/) |\n\nPre-production (or sandbox) can be used to access all the API methods and perform transactions to test operators and simulate different scenarios (e.g. response time, status, etc.). Success and failure responses are simulated depending on the suffix of the credit party mobile number as outlined [in this link](https://dvs-api-doc.dtone.com/testing_preproduction.pdf).\n\nOn the production environment, actual transactions will be performed to operators available in the product list. As such, real values will be delivered to beneficiaries and your account will be debited accordingly.\n\n**Note:** We strongly recommend using the sandbox environment to test your implementation and to liaise with the [DT One](https://dtone.com/) team before switching to production.\n\n## Versioning\n\nEndpoints of the API are prefixed with a corresponding version number.\n\nThis is done to provide complete isolation between implementations and to ensure that subsequent major changes to the API will never affect existing integrations.\n\nWhen a new version of the API is available and you are keen to upgrade, testing in the sandbox environment to ensure that everything works well with your implementation before switching to production comes highly recommended.\n\nFeel free to [contact us](mailto:dvs-api-support@dtone.com) should you have any questions and/or are in need of assistance during your tests.\n\n## Transactions\n\nThe main purpose of this API is to deliver value (e.g. mobile airtime top-up, data bundles, etc.) to a beneficiary. This is what we call a \"transaction\".\n\nDuring the course of a transfer, a transaction will undergo various status changes (or transitions) as illustrated below.\n\nAs changes in transaction status occur, updates will be sent in real-time when a callback URL is provided. In conjunction, transaction status can be queried through one of two means: via the returned `id` or a provided `external_id`.\n\nThe latter serves as a unique reference in the perspective of the customer and serves as a utility to retrieve transaction details when exceptions occur, such as when the supposed response was not received, as an example.\n\n![transaction states](https://dvs-api-doc.dtone.com/images/transaction_states.png)\n\n## Flow\n\nOnce a product has been selected via one of the [discovery methods](/#tag/Services) provided by the API, the actual transfer (i.e. transaction) can be performed in either one of the following modes:\n  - Asynchronous (recommended)\n  - Synchronous\n\nEach mode is accessible via a specific endpoint.\n\nAs soon as a transaction is confirmed, the transfer order will be sent to the operator for immediate processing. During this time, the transaction will remain in a `CONFIRMED` status until the final status is received by the operator.\n\n### Asynchronous Mode\n\nWhen a transaction is created and confirmed in an asynchronous fashion, the HTTP connection won't have to be kept open. This preserves resources on the application side. As such, performing transactions **asynchronously** is **recommended**.\n\n### Synchronous Mode\n\nWhen a transaction is created and confirmed in a synchronous fashion, the HTTP connection will be kept open in an attempt to capture the final status from the receiving operator and return it in the HTTP response. The processing time usually takes just a few seconds. However, with some receiving operators, it may take longer.\n\nOur system will keep the HTTP connection open for up to 180 seconds (this value can be configured upon request) and will return a status before closing this connection. This status can be in one of the final status (e.g. `COMPLETED`, `DECLINED`) or not (e.g. `CONFIRMED`). In the latter case, this means that the transaction is still under processing by the receiving operator.\n\n**Note:** the application does not have to wait for the connection to close, it can listen for a shorter period of time and query the final status later on (refer to the \"Final Status\" section below for more details).\n\n### Final Status\n\nRegardless of the processing mode, the application should be designed to capture the final status of a transaction. This can be done through one of the following means:\n  - Checking the status of a specific transaction via the corresponding API method (\"pull\" mechanism)\n  - Configuring a callback URL passed in the request when creating a transaction (\"push\" mechanism)\n\n## Callbacks\n\nWhile the transaction is being processed, changes in status will be notified in real-time if a callback URL was provided. Even though one callback per transaction is expected (i.e. change to either `COMPLETED` or `DECLINED`), a manual reversal from [DT One](https://dtone.com/) team which may happen in very rare occasions will also trigger a callback to inform the customer of a change in transaction status to `REVERSED`.\n\nThis callback endpoint must be implemented by the sending partner, which should expect an HTTP `POST` request containing a transaction object represented in [JSON](https://en.wikipedia.org/wiki/JSON). As callbacks will be sent from the [DT One](https://dtone.com/) servers, these endpoints will have to be publicly-accessible in most cases. During development, a service such as [ngrok](https://ngrok.com/) can be used to expose local servers to the internet.\n\nUpon successful receipt of data, the callback endpoint should respond with an HTTP `2XX` status. In the event that the platform did not receive a successful status, callback notifications will be retried several times, beyond which, the transaction status will have to be queried through the API.\n\n## Status and Errors\n\n### HTTP Status Codes\n\n[DT One](https://dtone.com/) uses standard HTTP response codes to indicate whether an API request was successful or not.\n\n| Status | Description                                        |\n| ---    | ---                                                |\n| `200`  | OK                                                 |\n| `201`  | Created: Resource created                          |\n| `202`  | Accepted: Request has been accepted for processing |\n| `400`  | Bad Request: Request was malformed                 |\n| `401`  | Unauthorized: Credentials missing or invalid       |\n| `404`  | Not Found: Resource doesn't exist                  |\n| `429`  | Too Many Requests                                  |\n| `500`  | Server Error: Error occurred on DT One             |\n\n### API Error Codes\n\n| Code      | Description                                       |\n| ---       | ---                                               |\n| `1000400` | Bad Request                                       |\n| `1000401` | Unauthorized                                      |\n| `1000404` | Resource not found                                |\n| `1003001` | Product is not available in your account          |\n| `1003002` | Requested product amount is out of range          |\n| `1003003` | Requested product unit is invalid                 |\n| `1003101` | Benefits not defined for available products       |\n| `1003201` | Promotion not found                               |\n| `1005003` | Credit party mobile number is invalid             |\n| `1005004` | Service not found                                 |\n| `1005005` | Country not found                                 |\n| `1005006` | Operator not found                                |\n| `1005503` | Sender mobile number is invalid                   |\n| `1006001` | Insufficient balance                              |\n| `1006003` | Debit party mobile number is invalid              |\n| `1006009` | Account balance not found                         |\n| `1006503` | Beneficiary mobile number is invalid              |\n| `1007001` | Transaction external ID has already been used     |\n| `1007002` | Transaction has already been confirmed            |\n| `1007004` | Transaction can no longer be confirmed            |\n| `1007005` | Transaction has already been cancelled            |\n| `1007007` | Transaction can no longer be cancelled            |\n| `1008004` | Transaction not found                             |\n| `1009001` | Unexpected error, please contact our support team |\n\n### Transaction Status\n\n| Class       | Status                                    | Description                                    |\n| ---         | ---                                       | ---                                            |\n| `CREATED`   | `CREATED`                                 | Created                                        |\n| `CONFIRMED` | `CONFIRMED`                               | Confirmed                                      |\n| `REJECTED`  | `REJECTED`                                | Rejected                                       |\n| `REJECTED`  | `REJECTED-INVALID-CREDIT-PARTY`           | Rejected - Credit party is invalid             |\n| `REJECTED`  | `REJECTED-BARRED-CREDIT-PARTY`            | Rejected - Credit party is barred              |\n| `REJECTED`  | `REJECTED-INVALID-DEBIT-PARTY`            | Rejected - Debit party is invalid              |\n| `REJECTED`  | `REJECTED-BARRED-DEBIT-PARTY`             | Rejected - Debit party is barred               |\n| `REJECTED`  | `REJECTED-OPERATOR-CURRENTLY-UNAVAILABLE` | Rejected - Operator currently unavailable      |\n| `REJECTED`  | `REJECTED-INSUFFICIENT-BALANCE`           | Rejected - Insufficient balance                |\n| `CANCELLED` | `CANCELLED`                               | Cancelled                                      |\n| `SUBMITTED` | `SUBMITTED`                               | Submitted                                      |\n| `COMPLETED` | `COMPLETED`                               | Completed                                      |\n| `REVERSED`  | `REVERSED`                                | Reversed                                       |\n| `DECLINED`  | `DECLINED`                                | Declined (no additional information available) |\n| `DECLINED`  | `DECLINED-INVALID-CREDIT-PARTY`           | Declined - Credit party is invalid             |\n| `DECLINED`  | `DECLINED-BARRED-CREDIT-PARTY`            | Declined - Credit party is barred              |\n| `DECLINED`  | `DECLINED-INVALID-DEBIT-PARTY`            | Declined - Debit party is invalid              |\n| `DECLINED`  | `DECLINED-BARRED-DEBIT-PARTY`             | Declined - Debit party is barred               |\n| `DECLINED`  | `DECLINED-DUPLICATED-TRANSACTION`         | Declined - Duplicated transaction              |\n| `DECLINED`  | `DECLINED-OPERATOR-CURRENTLY-UNAVAILABLE` | Declined - Operator currently unavailable      |\n\nIt is recommended to define application logic based on **classes**, while additional distinction and/or insight are reflected on the actual **status**.\n\n## Pagination\n\nAPI resources supporting bulk fetches via \"list\" API methods will be returned in a paginated fashion.\n\n### Input Parameters\n\n| Field      | Required | Type    | Description                                      |\n| ---        | ---      | ---     | ---                                              |\n| `page`     | No       | Integer | Page number                                      |\n| `per_page` | No       | Integer | Number of results per page (default 50, max 100) |\n\n### Output Headers\n\n| Field           | Description                   |\n| ---             | ---                           |\n| `X-Total`       | Total number of records       |\n| `X-Total-Pages` | Total number of pages         |\n| `X-Per-Page`    | Number of records per page    |\n| `X-Page`        | Current page number           |\n| `X-Next-Page`   | Next page number (if any)     |\n| `X-Prev-Page`   | Previous page number (if any) |\n\n## Rate Limiting\n\nThe API endpoints have rate limiting in place to protect our service from excessive number of requests.\n\nIf the limit is reached, an [HTTP error 429](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/429) will be returned by the server.\n\n# Authentication\n\n<!-- ReDoc-Inject: <security-definitions> -->"
+  },
+  "servers": [
+    {
+      "url": "https://preprod-dvs-api.dtone.com/v1",
+      "description": "Pre-Production"
+    },
+    {
+      "url": "https://dvs-api.dtone.com/v1",
+      "description": "Production"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Services",
+      "description": "The Digital Value Services platform provides access to various products across several industries. Such industries are termed as \"services\" in the Digital Value Services platform.\n\n| Service        | Examples                                  |\n| ---            | ---                                       |\n| Mobile         | Airtime Top Ups, Mobile Data Bundles, SMS |\n| Internet       | Broadband, Wi-Fi Recharge                 |\n| Utilities      | Electricity, Water, Utilities             |\n| Gift Cards     | Vouchers, Groceries, Gift Cards           |\n| Landline       | Landline                                  |\n| Television     | Television                                |\n| Insurance      | Insurance                                 |\n| Transportation | Transportation                            |\n| VoIP           | VoIP Credits                              |\n"
+    },
+    {
+      "name": "Countries",
+      "description": "Products are available across various geographical boundaries. These endpoints provide the means to enumerate available countries, which can then be used to filter against the list of [available products](#tag/Products/paths/~1products/get) in your account.\n"
+    },
+    {
+      "name": "Operators",
+      "description": "Products in the Digital Value Services Platform are associated to individual service providers, termed as \"operators\".\n\nSome examples of operators include:\n  - [Mobile Network Operators](https://en.wikipedia.org/wiki/Mobile_network_operator)\n  - [Utility Prepayment Meter Operators](https://en.wikipedia.org/wiki/Prepayment_meter)\n  - [VoIP Providers](https://en.wikipedia.org/wiki/Voice_over_IP)\n  - etc.\n"
+    },
+    {
+      "name": "Benefits",
+      "description": "Products ultimately redeem into one or more underlying benefits. These endpoints provide the means to enumerate available benefits, which can then be used to filter against the list of [available products](#tag/Products/paths/~1products/get) in your account.\n\n| Benefit Type | Examples                                                                                                    |\n| ---          | ---                                                                                                         |\n| `TALKTIME`   | Talktime Minutes                                                                                            |\n| `DATA`       | Mobile Data, Broadband Data                                                                                 |\n| `SMS`        | [SMS](https://en.wikipedia.org/wiki/SMS), [MMS](https://en.wikipedia.org/wiki/Multimedia_Messaging_Service) |\n| `PAYMENT`    | Bill Payment, Insurance Payment                                                                             |\n| `CREDITS`    | Prepaid Credits                                                                                             |\n"
+    },
+    {
+      "name": "Promotions",
+      "description": "Receiving operators are running seasonal promotions on selected products, this endpoint will provide visiblity on these promotions: start date, end date, terms and conditions, eligible products, ...\n"
+    },
+    {
+      "name": "Products",
+      "description": "Products form the actual digital values and/or products being transferred through the Digital Value Services platform.\n\n| Product Type                | Description                                                                              |\n| ---                         | ---                                                                                      |\n| `FIXED_VALUE_RECHARGE`      | Fixed denomination recharge                                                              |\n| `RANGED_VALUE_RECHARGE`     | Recharge against a range of value                                                        |\n| `FIXED_VALUE_PIN_PURCHASE`  | Digital [voucher](https://en.wikipedia.org/wiki/Voucher) storing a fixed value           |\n| `RANGED_VALUE_PIN_PURCHASE` | Digital [voucher](https://en.wikipedia.org/wiki/Voucher) with a range of possible values |\n| `FIXED_VALUE_PAYMENT`       | Pay bills and/or services                                                                |\n\nProducts are organized and subdivided into distinct types as each one has distinct characteristics and technical implications when transactions are performed. As such, each product type also carries a distinct [schema](https://en.wikipedia.org/wiki/JSON#JSON_Schema).\n"
+    },
+    {
+      "name": "Transactions",
+      "description": "This is the core service provided by the API, via this end point you can send value to the beneficiary in various forms.\n\nImportant notes on the flow can be found here: [Transactions Services](#section/Overview/Transactions)\n"
+    },
+    {
+      "name": "Balances",
+      "description": "This endpoint can be used to retrieve the status of all your balances in real time.\n\nNote that transactions will only be accepted if you have enough funds on your account so it's important to keep an eye on it.\n"
+    },
+    {
+      "name": "Mobile-Number",
+      "description": "Look up endpoints form a distinct category to ultimately discover products by resolving [mobile phone numbers](https://en.wikipedia.org/wiki/MSISDN) to their mobile operators based on [DT One](https://www.dtone.com) proprietary algorithm and logic.\n"
+    }
+  ],
+  "x-tagGroups": [
+    {
+      "name": "Discovery",
+      "tags": [
+        "Services",
+        "Countries",
+        "Operators",
+        "Benefits",
+        "Promotions",
+        "Products"
+      ]
+    },
+    {
+      "name": "Transactions",
+      "tags": [
+        "Transactions"
+      ]
+    },
+    {
+      "name": "Account",
+      "tags": [
+        "Balances"
+      ]
+    },
+    {
+      "name": "Look-Up",
+      "tags": [
+        "Mobile-Number"
+      ]
+    }
+  ],
+  "paths": {
+    "/services": {
+      "get": {
+        "tags": [
+          "Services"
+        ],
+        "summary": "Retrieve list of services",
+        "description": "Retrieve list of services",
+        "x-mojo-to": "v1#get_services",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Service"
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Total": {
+                "$ref": "#/components/headers/X-Total"
+              },
+              "X-Total-Pages": {
+                "$ref": "#/components/headers/X-Total-Pages"
+              },
+              "X-Per-Page": {
+                "$ref": "#/components/headers/X-Per-Page"
+              },
+              "X-Page": {
+                "$ref": "#/components/headers/X-Page"
+              },
+              "X-Next-Page": {
+                "$ref": "#/components/headers/X-Next-Page"
+              },
+              "X-Prev-Page": {
+                "$ref": "#/components/headers/X-Prev-Page"
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/services/{service_id}": {
+      "get": {
+        "tags": [
+          "Services"
+        ],
+        "summary": "Retrieve service by ID",
+        "description": "Retrieve service by ID",
+        "x-mojo-to": "v1#get_service_by_id",
+        "parameters": [
+          {
+            "name": "service_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ServiceID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Service not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/countries": {
+      "get": {
+        "tags": [
+          "Countries"
+        ],
+        "summary": "Retrieve list of countries",
+        "description": "Retrieve list of countries",
+        "x-mojo-to": "v1#get_countries",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Country"
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Total": {
+                "$ref": "#/components/headers/X-Total"
+              },
+              "X-Total-Pages": {
+                "$ref": "#/components/headers/X-Total-Pages"
+              },
+              "X-Per-Page": {
+                "$ref": "#/components/headers/X-Per-Page"
+              },
+              "X-Page": {
+                "$ref": "#/components/headers/X-Page"
+              },
+              "X-Next-Page": {
+                "$ref": "#/components/headers/X-Next-Page"
+              },
+              "X-Prev-Page": {
+                "$ref": "#/components/headers/X-Prev-Page"
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/countries/{country_iso_code}": {
+      "get": {
+        "tags": [
+          "Countries"
+        ],
+        "summary": "Retrieve country by ISO code",
+        "description": "Retrieve country by ISO code",
+        "x-mojo-to": "v1#get_country_by_iso_code",
+        "parameters": [
+          {
+            "name": "country_iso_code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ISO-3166-1_Alpha-3"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Country"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Country not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/operators": {
+      "get": {
+        "tags": [
+          "Operators"
+        ],
+        "summary": "Retrieve list of operators",
+        "description": "Retrieve list of operators",
+        "x-mojo-to": "v1#get_operators",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          },
+          {
+            "name": "country_iso_code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ISO-3166-1_Alpha-3"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/Operator"
+                      },
+                      {
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Total": {
+                "$ref": "#/components/headers/X-Total"
+              },
+              "X-Total-Pages": {
+                "$ref": "#/components/headers/X-Total-Pages"
+              },
+              "X-Per-Page": {
+                "$ref": "#/components/headers/X-Per-Page"
+              },
+              "X-Page": {
+                "$ref": "#/components/headers/X-Page"
+              },
+              "X-Next-Page": {
+                "$ref": "#/components/headers/X-Next-Page"
+              },
+              "X-Prev-Page": {
+                "$ref": "#/components/headers/X-Prev-Page"
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/operators/{operator_id}": {
+      "get": {
+        "tags": [
+          "Operators"
+        ],
+        "summary": "Retrieve operator by ID",
+        "description": "Retrieve operator by ID",
+        "x-mojo-to": "v1#get_operator_by_id",
+        "parameters": [
+          {
+            "name": "operator_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OperatorID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Operator"
+                    },
+                    {
+                      "additionalProperties": false
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Operator not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/benefit-types": {
+      "get": {
+        "tags": [
+          "Benefits"
+        ],
+        "summary": "Retrieve list of benefit types",
+        "description": "Retrieve list of benefit types",
+        "x-mojo-to": "v1#get_benefit_types",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BenefitType"
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Total": {
+                "$ref": "#/components/headers/X-Total"
+              },
+              "X-Total-Pages": {
+                "$ref": "#/components/headers/X-Total-Pages"
+              },
+              "X-Per-Page": {
+                "$ref": "#/components/headers/X-Per-Page"
+              },
+              "X-Page": {
+                "$ref": "#/components/headers/X-Page"
+              },
+              "X-Next-Page": {
+                "$ref": "#/components/headers/X-Next-Page"
+              },
+              "X-Prev-Page": {
+                "$ref": "#/components/headers/X-Prev-Page"
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/promotions": {
+      "get": {
+        "tags": [
+          "Promotions"
+        ],
+        "summary": "Retrieve a list of promotions",
+        "description": "Retrieve a list of promotions",
+        "x-mojo-to": "v1#get_promotions",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          },
+          {
+            "name": "country_iso_code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ISO-3166-1_Alpha-3"
+            }
+          },
+          {
+            "name": "operator_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/OperatorID"
+            }
+          },
+          {
+            "name": "product_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ProductID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Promotion"
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Total": {
+                "$ref": "#/components/headers/X-Total"
+              },
+              "X-Total-Pages": {
+                "$ref": "#/components/headers/X-Total-Pages"
+              },
+              "X-Per-Page": {
+                "$ref": "#/components/headers/X-Per-Page"
+              },
+              "X-Page": {
+                "$ref": "#/components/headers/X-Page"
+              },
+              "X-Next-Page": {
+                "$ref": "#/components/headers/X-Next-Page"
+              },
+              "X-Prev-Page": {
+                "$ref": "#/components/headers/X-Prev-Page"
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/promotions/{promotion_id}": {
+      "get": {
+        "tags": [
+          "Promotions"
+        ],
+        "summary": "Retrieve a promotion by ID",
+        "description": "Retrieve a promotion by ID",
+        "x-mojo-to": "v1#get_promotion_by_id",
+        "parameters": [
+          {
+            "name": "promotion_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/PromotionID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Promotion"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Promotion not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Retrieve list of products",
+        "description": "Retrieve list of products",
+        "x-mojo-to": "v1#get_products",
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ProductTypes"
+            }
+          },
+          {
+            "name": "service_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "country_iso_code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ISO-3166-1_Alpha-3"
+            }
+          },
+          {
+            "name": "operator_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "region",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/X-ISO-3166-2"
+            }
+          },
+          {
+            "name": "benefit_types",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/BenefitTypes"
+              },
+              "uniqueItems": true
+            },
+            "style": "form",
+            "explode": false
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Product"
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Total": {
+                "$ref": "#/components/headers/X-Total"
+              },
+              "X-Total-Pages": {
+                "$ref": "#/components/headers/X-Total-Pages"
+              },
+              "X-Per-Page": {
+                "$ref": "#/components/headers/X-Per-Page"
+              },
+              "X-Page": {
+                "$ref": "#/components/headers/X-Page"
+              },
+              "X-Next-Page": {
+                "$ref": "#/components/headers/X-Next-Page"
+              },
+              "X-Prev-Page": {
+                "$ref": "#/components/headers/X-Prev-Page"
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/products/{product_id}": {
+      "get": {
+        "tags": [
+          "Products"
+        ],
+        "summary": "Retrieve product by ID",
+        "description": "Retrieve product by ID",
+        "x-mojo-to": "v1#get_product_by_id",
+        "parameters": [
+          {
+            "name": "product_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ProductID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Product"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Product not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/async/transactions": {
+      "post": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Create a transaction asynchronously",
+        "description": "Two transaction modes (asynchronous and synchronous) are available. This endpoint lets you create a transaction in the **asynchronous** mode. Note that the `auto_confirm` flag can be set to simultaneously create and confirm a transaction in one step (i.e. HTTP request).",
+        "x-mojo-to": "v1#post_transaction",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Transaction"
+                  },
+                  {
+                    "properties": {
+                      "callback_url": {
+                        "type": "string",
+                        "format": "uri"
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Transaction created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transaction"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sync/transactions": {
+      "post": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Create a transaction synchronously",
+        "description": "Two transaction modes (asynchronous and synchronous) are available. This endpoint lets you create a transaction in the **synchronous** mode. Note that the `auto_confirm` flag can be set to simultaneously create and confirm a transaction in one step (i.e. HTTP request).",
+        "x-mojo-to": "v1#post_transaction",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Transaction"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Transaction created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transaction"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transactions/{transaction_id}": {
+      "get": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Query a transaction by ID",
+        "description": "This endpoint will return the details of the requested transaction.",
+        "x-mojo-to": "v1#get_transactions",
+        "parameters": [
+          {
+            "name": "transaction_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TransactionID"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Transaction"
+                    },
+                    {
+                      "properties": {
+                        "callback_url": {
+                          "type": "string",
+                          "format": "uri"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Transaction not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transactions": {
+      "get": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Query list of transactions",
+        "description": "This endpoint will return a list of transactions matching the search criteria. Note that only transactions created within the last 3 months will be returned.",
+        "x-mojo-to": "v1#get_transactions",
+        "parameters": [
+          {
+            "name": "external_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          {
+            "name": "product_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ProductTypes"
+            }
+          },
+          {
+            "name": "service_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "country_iso_code",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ISO-3166-1_Alpha-3"
+            }
+          },
+          {
+            "name": "operator_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "status_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "credit_party_mobile_number",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/E.164"
+            }
+          },
+          {
+            "name": "credit_party_account_number",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/NonEmptyString"
+            }
+          },
+          {
+            "name": "from_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Starting date to filter transactions based on creation date, inclusive of the provided date"
+          },
+          {
+            "name": "to_date",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Ending date to filter transactions based on creation date, inclusive of the provided date"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/Transaction"
+                      },
+                      {
+                        "properties": {
+                          "callback_url": {
+                            "type": "string",
+                            "format": "uri"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Total": {
+                "$ref": "#/components/headers/X-Total"
+              },
+              "X-Total-Pages": {
+                "$ref": "#/components/headers/X-Total-Pages"
+              },
+              "X-Per-Page": {
+                "$ref": "#/components/headers/X-Per-Page"
+              },
+              "X-Page": {
+                "$ref": "#/components/headers/X-Page"
+              },
+              "X-Next-Page": {
+                "$ref": "#/components/headers/X-Next-Page"
+              },
+              "X-Prev-Page": {
+                "$ref": "#/components/headers/X-Prev-Page"
+              }
+            }
+          },
+          "404": {
+            "description": "Transaction not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/async/transactions/{transaction_id}/confirm": {
+      "post": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Confirm a transaction asynchronously",
+        "description": "If an **asynchronous** transaction was created without setting the `auto_confirm` flag, this endpoint will have to be called to confirm the transaction. Once successfully confirmed, the transfer order will be submitted to the operator to be processed.\n\nPlease note that only unexpired transactions can be confirmed, as denoted in the `confirmation_expiration_date` field of the transaction. Beyond this, the only allowed change is to [cancel the transaction](/#tag/Transactions/paths/~1transactions~1{transaction_id}~1cancel/post), so as to release the held balance.\n",
+        "x-mojo-to": "v1#confirm_transaction",
+        "parameters": [
+          {
+            "name": "transaction_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TransactionID"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Transaction confirmed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transaction"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sync/transactions/{transaction_id}/confirm": {
+      "post": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Confirm a transaction synchronously",
+        "description": "If a **synchronous** transaction was created without setting the `auto_confirm` flag, this endpoint will have to be called to confirm the transaction. Once successfully confirmed, the transfer order will be submitted to the operator to be processed.\n\nPlease note that only unexpired transactions can be confirmed, as denoted in the `confirmation_expiration_date` field of the transaction. Beyond this, the only allowed change is to [cancel the transaction](/#tag/Transactions/paths/~1transactions~1{transaction_id}~1cancel/post), so as to release the held balance.\n",
+        "x-mojo-to": "v1#confirm_transaction",
+        "parameters": [
+          {
+            "name": "transaction_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TransactionID"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Transaction confirmed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transaction"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/transactions/{transaction_id}/cancel": {
+      "post": {
+        "tags": [
+          "Transactions"
+        ],
+        "summary": "Cancel a transaction",
+        "description": "If a transaction is still in the `CREATED` state, it has not yet been submitted to the receiving operator for processing. You can thus request to cancel such transactions by calling this endpoint.",
+        "x-mojo-to": "v1#cancel_transaction",
+        "parameters": [
+          {
+            "name": "transaction_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/TransactionID"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "description": "Transaction cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Transaction"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/balances": {
+      "get": {
+        "tags": [
+          "Balances"
+        ],
+        "summary": "Retrieve balances",
+        "description": "Retrieve balances",
+        "x-mojo-to": "v1#get_balances",
+        "parameters": [
+          {
+            "name": "unit_type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/UnitTypes"
+            }
+          },
+          {
+            "name": "unit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Balance"
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Total": {
+                "$ref": "#/components/headers/X-Total"
+              },
+              "X-Total-Pages": {
+                "$ref": "#/components/headers/X-Total-Pages"
+              },
+              "X-Per-Page": {
+                "$ref": "#/components/headers/X-Per-Page"
+              },
+              "X-Page": {
+                "$ref": "#/components/headers/X-Page"
+              },
+              "X-Next-Page": {
+                "$ref": "#/components/headers/X-Next-Page"
+              },
+              "X-Prev-Page": {
+                "$ref": "#/components/headers/X-Prev-Page"
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/lookup/mobile-number/{mobile_number}": {
+      "get": {
+        "tags": [
+          "Mobile-Number"
+        ],
+        "summary": "Look up operators for a given mobile number",
+        "description": "Look up operators for a given mobile number",
+        "x-mojo-to": "v1#lookup_mobile_number",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          },
+          {
+            "in": "path",
+            "name": "mobile_number",
+            "schema": {
+              "$ref": "#/components/schemas/E.164"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/Operator"
+                      },
+                      {
+                        "type": "object",
+                        "required": [
+                          "identified"
+                        ],
+                        "properties": {
+                          "identified": {
+                            "type": "boolean",
+                            "description": "Indicates whether operator was identified as a direct match"
+                          }
+                        }
+                      },
+                      {
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                }
+              }
+            },
+            "headers": {
+              "X-Total": {
+                "$ref": "#/components/headers/X-Total"
+              },
+              "X-Total-Pages": {
+                "$ref": "#/components/headers/X-Total-Pages"
+              },
+              "X-Per-Page": {
+                "$ref": "#/components/headers/X-Per-Page"
+              },
+              "X-Page": {
+                "$ref": "#/components/headers/X-Page"
+              },
+              "X-Next-Page": {
+                "$ref": "#/components/headers/X-Next-Page"
+              },
+              "X-Prev-Page": {
+                "$ref": "#/components/headers/X-Prev-Page"
+              }
+            }
+          },
+          "default": {
+            "description": "default error response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Errors"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "BasicAuth": {
+        "type": "http",
+        "scheme": "basic",
+        "description": "The Digital Value Services API requires requests to be authenticated through individualized API keys. You can view and manage your API keys in the Digital Value Services Portal.\n\nYour API keys carry many privileges, so please keep them secure! Do not share your secret API keys in publicly-accessible areas such as [GitHub](https://github.com/), client-side code, and so forth.\n\nAuthentication to the API is performed via [HTTP Basic Auth](https://tools.ietf.org/html/rfc7235). Provide your API key as the basic auth username value and your API secret as your password.\n\nExcept when site-to-site VPN is set up, all API requests must be made over [HTTPS](http://en.wikipedia.org/wiki/HTTP_Secure) with TLS 1.2.\n\nOn a side note, we strongly recommend securing your applications against common security flaws by employing best practices such as the [OWASP Top 10](https://www.owasp.org/index.php/Category:OWASP_Top_Ten_Project).\n"
+      }
+    },
+    "schemas": {
+      "Service": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/ServiceID"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "Country": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "iso_code": {
+            "$ref": "#/components/schemas/ISO-3166-1_Alpha-3"
+          },
+          "regions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceRegion"
+            },
+            "nullable": true
+          }
+        },
+        "required": [
+          "name",
+          "iso_code",
+          "regions"
+        ],
+        "additionalProperties": false
+      },
+      "Operator": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/OperatorID"
+          },
+          "name": {
+            "type": "string"
+          },
+          "country": {
+            "$ref": "#/components/schemas/Country"
+          },
+          "regions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceRegion"
+            },
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "country",
+          "regions"
+        ]
+      },
+      "ServiceRegion": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "code": {
+            "$ref": "#/components/schemas/X-ISO-3166-2"
+          }
+        },
+        "required": [
+          "name",
+          "code"
+        ],
+        "additionalProperties": false
+      },
+      "BenefitType": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "$ref": "#/components/schemas/BenefitTypes"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "FixedBenefit": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/BenefitTypes"
+          },
+          "unit_type": {
+            "$ref": "#/components/schemas/BenefitUnitTypes"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/FixedBenefitAmount"
+          },
+          "additional_information": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "type",
+          "unit_type",
+          "unit",
+          "amount",
+          "additional_information"
+        ],
+        "additionalProperties": false
+      },
+      "RangedBenefit": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/BenefitTypes"
+          },
+          "unit_type": {
+            "$ref": "#/components/schemas/BenefitUnitTypes"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "amount": {
+            "$ref": "#/components/schemas/RangeBenefitAmountWithoutIncrement"
+          },
+          "additional_information": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "type",
+          "unit_type",
+          "unit",
+          "amount",
+          "additional_information"
+        ],
+        "additionalProperties": false
+      },
+      "ProductBase": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "service": {
+            "$ref": "#/components/schemas/Service"
+          },
+          "operator": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Operator"
+              },
+              {
+                "additionalProperties": false
+              }
+            ]
+          },
+          "regions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ServiceRegion"
+            },
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "service",
+          "operator",
+          "regions"
+        ]
+      },
+      "ProductFixedValueRecharge": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProductBase"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "FIXED_VALUE_RECHARGE"
+                ]
+              },
+              "validity": {
+                "type": "object",
+                "properties": {
+                  "unit": {
+                    "$ref": "#/components/schemas/TimeUnits"
+                  },
+                  "quantity": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "unit",
+                  "quantity"
+                ],
+                "nullable": true,
+                "additionalProperties": false
+              },
+              "required_debit_party_identifier_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "required_credit_party_identifier_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required_sender_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "required_beneficiary_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "availability_zones": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AvailabilityZones"
+                }
+              },
+              "source": {
+                "type": "object",
+                "properties": {
+                  "unit_type": {
+                    "$ref": "#/components/schemas/UnitTypes"
+                  },
+                  "unit": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "unit_type",
+                  "unit",
+                  "amount"
+                ],
+                "additionalProperties": false
+              },
+              "destination": {
+                "type": "object",
+                "properties": {
+                  "unit_type": {
+                    "$ref": "#/components/schemas/UnitTypes"
+                  },
+                  "unit": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "unit_type",
+                  "unit",
+                  "amount"
+                ],
+                "additionalProperties": false
+              },
+              "prices": {
+                "type": "object",
+                "properties": {
+                  "wholesale": {
+                    "type": "object",
+                    "properties": {
+                      "unit_type": {
+                        "$ref": "#/components/schemas/UnitTypes"
+                      },
+                      "unit": {
+                        "type": "string"
+                      },
+                      "amount": {
+                        "type": "number"
+                      },
+                      "fee": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "unit_type",
+                      "unit",
+                      "amount",
+                      "fee"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "retail": {
+                    "type": "object",
+                    "properties": {
+                      "unit_type": {
+                        "allOf": [
+                          {
+                            "$ref": "#/components/schemas/UnitTypes"
+                          },
+                          {
+                            "nullable": true
+                          }
+                        ]
+                      },
+                      "unit": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "amount": {
+                        "type": "number",
+                        "nullable": true
+                      },
+                      "fee": {
+                        "type": "number",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "unit_type",
+                      "unit",
+                      "amount",
+                      "fee"
+                    ],
+                    "nullable": true,
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "wholesale",
+                  "retail"
+                ],
+                "additionalProperties": false
+              },
+              "rates": {
+                "$ref": "#/components/schemas/Rates"
+              },
+              "benefits": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/FixedBenefit"
+                },
+                "nullable": true
+              },
+              "promotions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ProductPromotion"
+                },
+                "nullable": true
+              }
+            },
+            "required": [
+              "type",
+              "validity",
+              "required_debit_party_identifier_fields",
+              "required_credit_party_identifier_fields",
+              "required_sender_fields",
+              "required_beneficiary_fields",
+              "availability_zones",
+              "source",
+              "destination",
+              "prices",
+              "rates",
+              "benefits",
+              "promotions"
+            ]
+          },
+          {
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ProductRangedValueRecharge": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProductBase"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "RANGED_VALUE_RECHARGE"
+                ]
+              },
+              "validity": {
+                "type": "object",
+                "properties": {
+                  "unit": {
+                    "$ref": "#/components/schemas/TimeUnits"
+                  },
+                  "quantity": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "unit",
+                  "quantity"
+                ],
+                "nullable": true,
+                "additionalProperties": false
+              },
+              "required_debit_party_identifier_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "required_credit_party_identifier_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required_sender_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "required_beneficiary_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "accepted_calculation_modes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CalculationModes"
+                }
+              },
+              "availability_zones": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AvailabilityZones"
+                }
+              },
+              "source": {
+                "type": "object",
+                "properties": {
+                  "unit_type": {
+                    "$ref": "#/components/schemas/UnitTypes"
+                  },
+                  "unit": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "$ref": "#/components/schemas/RangeWithoutIncrement"
+                  }
+                },
+                "required": [
+                  "unit_type",
+                  "unit",
+                  "amount"
+                ],
+                "additionalProperties": false
+              },
+              "destination": {
+                "type": "object",
+                "properties": {
+                  "unit_type": {
+                    "$ref": "#/components/schemas/UnitTypes"
+                  },
+                  "unit": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "$ref": "#/components/schemas/Range"
+                  }
+                },
+                "required": [
+                  "unit_type",
+                  "unit",
+                  "amount"
+                ],
+                "additionalProperties": false
+              },
+              "prices": {
+                "type": "object",
+                "properties": {
+                  "wholesale": {
+                    "type": "object",
+                    "properties": {
+                      "unit_type": {
+                        "$ref": "#/components/schemas/UnitTypes"
+                      },
+                      "unit": {
+                        "type": "string"
+                      },
+                      "amount": {
+                        "$ref": "#/components/schemas/RangeWithoutIncrement"
+                      },
+                      "fee": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "unit_type",
+                      "unit",
+                      "amount",
+                      "fee"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "retail": {
+                    "type": "object",
+                    "properties": {
+                      "unit_type": {
+                        "allOf": [
+                          {
+                            "$ref": "#/components/schemas/UnitTypes"
+                          },
+                          {
+                            "nullable": true
+                          }
+                        ]
+                      },
+                      "unit": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "amount": {
+                        "allOf": [
+                          {
+                            "$ref": "#/components/schemas/RangeWithoutIncrement"
+                          },
+                          {
+                            "nullable": true
+                          }
+                        ]
+                      },
+                      "fee": {
+                        "type": "number",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "unit_type",
+                      "unit",
+                      "amount",
+                      "fee"
+                    ],
+                    "nullable": true,
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "wholesale",
+                  "retail"
+                ],
+                "additionalProperties": false
+              },
+              "rates": {
+                "$ref": "#/components/schemas/Rates"
+              },
+              "benefits": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RangedBenefit"
+                },
+                "nullable": true
+              },
+              "promotions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ProductPromotion"
+                },
+                "nullable": true
+              }
+            },
+            "required": [
+              "type",
+              "validity",
+              "required_debit_party_identifier_fields",
+              "required_credit_party_identifier_fields",
+              "required_sender_fields",
+              "required_beneficiary_fields",
+              "accepted_calculation_modes",
+              "availability_zones",
+              "source",
+              "destination",
+              "prices",
+              "rates",
+              "benefits",
+              "promotions"
+            ]
+          },
+          {
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ProductFixedValuePinPurchase": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProductBase"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "FIXED_VALUE_PIN_PURCHASE"
+                ]
+              },
+              "validity": {
+                "type": "object",
+                "properties": {
+                  "unit": {
+                    "$ref": "#/components/schemas/TimeUnits"
+                  },
+                  "quantity": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "unit",
+                  "quantity"
+                ],
+                "nullable": true,
+                "additionalProperties": false
+              },
+              "required_debit_party_identifier_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "required_credit_party_identifier_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required_sender_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "required_beneficiary_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "availability_zones": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AvailabilityZones"
+                }
+              },
+              "source": {
+                "type": "object",
+                "properties": {
+                  "unit_type": {
+                    "$ref": "#/components/schemas/UnitTypes"
+                  },
+                  "unit": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "unit_type",
+                  "unit",
+                  "amount"
+                ],
+                "additionalProperties": false
+              },
+              "destination": {
+                "type": "object",
+                "properties": {
+                  "unit_type": {
+                    "$ref": "#/components/schemas/UnitTypes"
+                  },
+                  "unit": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "unit_type",
+                  "unit",
+                  "amount"
+                ],
+                "additionalProperties": false
+              },
+              "prices": {
+                "type": "object",
+                "properties": {
+                  "wholesale": {
+                    "type": "object",
+                    "properties": {
+                      "unit_type": {
+                        "$ref": "#/components/schemas/UnitTypes"
+                      },
+                      "unit": {
+                        "type": "string"
+                      },
+                      "amount": {
+                        "type": "number"
+                      },
+                      "fee": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "unit_type",
+                      "unit",
+                      "amount",
+                      "fee"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "retail": {
+                    "type": "object",
+                    "properties": {
+                      "unit_type": {
+                        "allOf": [
+                          {
+                            "$ref": "#/components/schemas/UnitTypes"
+                          },
+                          {
+                            "nullable": true
+                          }
+                        ]
+                      },
+                      "unit": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "amount": {
+                        "type": "number",
+                        "nullable": true
+                      },
+                      "fee": {
+                        "type": "number",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "unit_type",
+                      "unit",
+                      "amount",
+                      "fee"
+                    ],
+                    "nullable": true,
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "wholesale",
+                  "retail"
+                ],
+                "additionalProperties": false
+              },
+              "rates": {
+                "$ref": "#/components/schemas/Rates"
+              },
+              "pin": {
+                "$ref": "#/components/schemas/PIN"
+              },
+              "benefits": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/FixedBenefit"
+                },
+                "nullable": true
+              },
+              "promotions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ProductPromotion"
+                },
+                "nullable": true
+              }
+            },
+            "required": [
+              "type",
+              "validity",
+              "required_debit_party_identifier_fields",
+              "required_credit_party_identifier_fields",
+              "required_sender_fields",
+              "required_beneficiary_fields",
+              "availability_zones",
+              "source",
+              "destination",
+              "prices",
+              "rates",
+              "pin",
+              "benefits",
+              "promotions"
+            ]
+          },
+          {
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ProductRangedValuePinPurchase": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProductBase"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "RANGED_VALUE_PIN_PURCHASE"
+                ]
+              },
+              "validity": {
+                "type": "object",
+                "properties": {
+                  "unit": {
+                    "$ref": "#/components/schemas/TimeUnits"
+                  },
+                  "quantity": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "unit",
+                  "quantity"
+                ],
+                "nullable": true,
+                "additionalProperties": false
+              },
+              "required_debit_party_identifier_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "required_credit_party_identifier_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required_sender_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "required_beneficiary_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "accepted_calculation_modes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CalculationModes"
+                }
+              },
+              "availability_zones": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AvailabilityZones"
+                }
+              },
+              "source": {
+                "type": "object",
+                "properties": {
+                  "unit_type": {
+                    "$ref": "#/components/schemas/UnitTypes"
+                  },
+                  "unit": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "$ref": "#/components/schemas/RangeWithoutIncrement"
+                  }
+                },
+                "required": [
+                  "unit_type",
+                  "unit",
+                  "amount"
+                ],
+                "additionalProperties": false
+              },
+              "destination": {
+                "type": "object",
+                "properties": {
+                  "unit_type": {
+                    "$ref": "#/components/schemas/UnitTypes"
+                  },
+                  "unit": {
+                    "type": "string"
+                  },
+                  "amount": {
+                    "$ref": "#/components/schemas/Range"
+                  }
+                },
+                "required": [
+                  "unit_type",
+                  "unit",
+                  "amount"
+                ],
+                "additionalProperties": false
+              },
+              "prices": {
+                "type": "object",
+                "properties": {
+                  "wholesale": {
+                    "type": "object",
+                    "properties": {
+                      "unit_type": {
+                        "$ref": "#/components/schemas/UnitTypes"
+                      },
+                      "unit": {
+                        "type": "string"
+                      },
+                      "amount": {
+                        "$ref": "#/components/schemas/RangeWithoutIncrement"
+                      },
+                      "fee": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "unit_type",
+                      "unit",
+                      "amount",
+                      "fee"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "retail": {
+                    "type": "object",
+                    "properties": {
+                      "unit_type": {
+                        "allOf": [
+                          {
+                            "$ref": "#/components/schemas/UnitTypes"
+                          },
+                          {
+                            "nullable": true
+                          }
+                        ]
+                      },
+                      "unit": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "amount": {
+                        "allOf": [
+                          {
+                            "$ref": "#/components/schemas/RangeWithoutIncrement"
+                          },
+                          {
+                            "nullable": true
+                          }
+                        ]
+                      },
+                      "fee": {
+                        "type": "number",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "unit_type",
+                      "unit",
+                      "amount",
+                      "fee"
+                    ],
+                    "nullable": true,
+                    "additionalProperties": false
+                  }
+                },
+                "required": [
+                  "wholesale",
+                  "retail"
+                ],
+                "additionalProperties": false
+              },
+              "rates": {
+                "$ref": "#/components/schemas/Rates"
+              },
+              "pin": {
+                "$ref": "#/components/schemas/PIN"
+              },
+              "benefits": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/RangedBenefit"
+                },
+                "nullable": true
+              },
+              "promotions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ProductPromotion"
+                },
+                "nullable": true
+              }
+            },
+            "required": [
+              "type",
+              "validity",
+              "required_debit_party_identifier_fields",
+              "required_credit_party_identifier_fields",
+              "required_sender_fields",
+              "required_beneficiary_fields",
+              "accepted_calculation_modes",
+              "availability_zones",
+              "source",
+              "destination",
+              "prices",
+              "rates",
+              "pin",
+              "benefits",
+              "promotions"
+            ]
+          },
+          {
+            "additionalProperties": false
+          }
+        ]
+      },
+      "ProductFixedValuePayment": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/ProductBase"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "FIXED_VALUE_PAYMENT"
+                ]
+              },
+              "validity": {
+                "type": "object",
+                "properties": {
+                  "unit": {
+                    "$ref": "#/components/schemas/TimeUnits"
+                  },
+                  "quantity": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "unit",
+                  "quantity"
+                ],
+                "nullable": true,
+                "additionalProperties": false
+              },
+              "required_debit_party_identifier_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "required_credit_party_identifier_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required_sender_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "required_beneficiary_fields": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "nullable": true
+              },
+              "availability_zones": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/AvailabilityZones"
+                }
+              },
+              "benefits": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/FixedBenefit"
+                },
+                "nullable": true
+              },
+              "promotions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ProductPromotion"
+                },
+                "nullable": true
+              }
+            },
+            "required": [
+              "type",
+              "validity",
+              "required_debit_party_identifier_fields",
+              "required_credit_party_identifier_fields",
+              "required_sender_fields",
+              "required_beneficiary_fields",
+              "availability_zones",
+              "benefits",
+              "promotions"
+            ]
+          },
+          {
+            "additionalProperties": false
+          }
+        ]
+      },
+      "Product": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/ProductFixedValueRecharge"
+          },
+          {
+            "$ref": "#/components/schemas/ProductRangedValueRecharge"
+          },
+          {
+            "$ref": "#/components/schemas/ProductFixedValuePinPurchase"
+          },
+          {
+            "$ref": "#/components/schemas/ProductRangedValuePinPurchase"
+          },
+          {
+            "$ref": "#/components/schemas/ProductFixedValuePayment"
+          }
+        ],
+        "discriminator": {
+          "propertyName": "type",
+          "mapping": {
+            "FIXED_VALUE_RECHARGE": "#/components/schemas/ProductFixedValueRecharge",
+            "RANGED_VALUE_RECHARGE": "#/components/schemas/ProductRangedValueRecharge",
+            "FIXED_VALUE_PIN_PURCHASE": "#/components/schemas/ProductFixedValuePinPurchase",
+            "RANGED_VALUE_PIN_PURCHASE": "#/components/schemas/ProductRangedValuePinPurchase",
+            "FIXED_VALUE_PAYMENT": "#/components/schemas/ProductFixedValuePayment"
+          }
+        }
+      },
+      "ProductPromotion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "terms": {
+            "type": "string",
+            "nullable": true
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "terms",
+          "start_date",
+          "end_date"
+        ],
+        "additionalProperties": false
+      },
+      "Promotion": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "terms": {
+            "type": "string",
+            "nullable": true
+          },
+          "start_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "end_date": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "operator": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/OperatorID"
+              },
+              "name": {
+                "type": "string"
+              },
+              "country": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "iso_code": {
+                    "$ref": "#/components/schemas/ISO-3166-1_Alpha-3"
+                  }
+                },
+                "required": [
+                  "name",
+                  "iso_code"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "country"
+            ]
+          },
+          "products": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "integer"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "type": {
+                  "$ref": "#/components/schemas/ProductTypes"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "description",
+                "type"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "description",
+          "terms",
+          "start_date",
+          "end_date",
+          "operator",
+          "products"
+        ],
+        "additionalProperties": false
+      },
+      "Transaction": {
+        "type": "object",
+        "required": [
+          "external_id",
+          "product_id",
+          "credit_party_identifier"
+        ],
+        "properties": {
+          "id": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TransactionID"
+              },
+              {
+                "readOnly": true
+              }
+            ]
+          },
+          "external_id": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/NonEmptyString"
+              },
+              {
+                "maxLength": 40
+              }
+            ]
+          },
+          "creation_date": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "confirmation_expiration_date": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "confirmation_date": {
+            "type": "string",
+            "format": "date-time",
+            "readOnly": true
+          },
+          "product_id": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProductID"
+              },
+              {
+                "writeOnly": true
+              }
+            ]
+          },
+          "calculation_mode": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/CalculationModes"
+              },
+              {
+                "nullable": true
+              },
+              {
+                "writeOnly": true
+              },
+              {
+                "description": "Required when product type is either `RANGED_VALUE_RECHARGE` or `RANGED_VALUE_PIN_PURCHASE`"
+              }
+            ]
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "unit_type": {
+                "$ref": "#/components/schemas/UnitTypes"
+              },
+              "unit": {
+                "$ref": "#/components/schemas/NonEmptyString"
+              },
+              "amount": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "unit_type",
+              "unit",
+              "amount"
+            ],
+            "additionalProperties": false,
+            "nullable": true,
+            "writeOnly": true,
+            "description": "Required for ranged value products and when `calculation_mode` is set to `SOURCE_AMOUNT`"
+          },
+          "destination": {
+            "type": "object",
+            "properties": {
+              "unit_type": {
+                "$ref": "#/components/schemas/UnitTypes"
+              },
+              "unit": {
+                "$ref": "#/components/schemas/NonEmptyString"
+              },
+              "amount": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "unit_type",
+              "unit",
+              "amount"
+            ],
+            "additionalProperties": false,
+            "nullable": true,
+            "writeOnly": true,
+            "description": "Required for ranged value products and when `calculation_mode` is set to `DESTINATION_MODE`"
+          },
+          "auto_confirm": {
+            "type": "boolean",
+            "default": false,
+            "writeOnly": true
+          },
+          "status": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "integer"
+              },
+              "message": {
+                "$ref": "#/components/schemas/NonEmptyString"
+              },
+              "class": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer"
+                  },
+                  "message": {
+                    "$ref": "#/components/schemas/NonEmptyString"
+                  }
+                },
+                "required": [
+                  "id",
+                  "message"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "readOnly": true
+          },
+          "operator_reference": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S",
+            "nullable": true,
+            "readOnly": true
+          },
+          "pin": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S",
+                "nullable": true
+              },
+              "serial": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "\\S",
+                "nullable": true
+              }
+            },
+            "required": [
+              "code",
+              "serial"
+            ],
+            "readOnly": true,
+            "nullable": true
+          },
+          "product": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ProductBase"
+              },
+              {
+                "readOnly": true
+              }
+            ]
+          },
+          "prices": {
+            "type": "object",
+            "properties": {
+              "wholesale": {
+                "type": "object",
+                "properties": {
+                  "unit_type": {
+                    "$ref": "#/components/schemas/UnitTypes"
+                  },
+                  "unit": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/NonEmptyString"
+                      },
+                      {
+                        "nullable": true
+                      }
+                    ]
+                  },
+                  "amount": {
+                    "type": "number"
+                  },
+                  "fee": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "unit_type",
+                  "unit",
+                  "amount",
+                  "fee"
+                ],
+                "additionalProperties": false
+              },
+              "retail": {
+                "type": "object",
+                "properties": {
+                  "unit_type": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/UnitTypes"
+                      },
+                      {
+                        "nullable": true
+                      }
+                    ]
+                  },
+                  "unit": {
+                    "allOf": [
+                      {
+                        "$ref": "#/components/schemas/NonEmptyString"
+                      },
+                      {
+                        "nullable": true
+                      }
+                    ]
+                  },
+                  "amount": {
+                    "type": "number",
+                    "nullable": true
+                  },
+                  "fee": {
+                    "type": "number",
+                    "nullable": true
+                  }
+                },
+                "required": [
+                  "unit_type",
+                  "unit",
+                  "amount",
+                  "fee"
+                ],
+                "nullable": true,
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "wholesale",
+              "retail"
+            ],
+            "additionalProperties": false,
+            "readOnly": true
+          },
+          "rates": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Rates"
+              },
+              {
+                "readOnly": true
+              }
+            ]
+          },
+          "benefits": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/FixedBenefit"
+                },
+                {
+                  "$ref": "#/components/schemas/RangedBenefit"
+                }
+              ]
+            },
+            "nullable": true,
+            "readOnly": true
+          },
+          "promotions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProductPromotion"
+            },
+            "nullable": true,
+            "readOnly": true
+          },
+          "requested_values": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "object",
+                "properties": {
+                  "unit_type": {
+                    "$ref": "#/components/schemas/UnitTypes"
+                  },
+                  "unit": {
+                    "$ref": "#/components/schemas/NonEmptyString"
+                  },
+                  "amount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "unit_type",
+                  "unit",
+                  "amount"
+                ],
+                "additionalProperties": false
+              },
+              "destination": {
+                "type": "object",
+                "properties": {
+                  "unit_type": {
+                    "$ref": "#/components/schemas/UnitTypes"
+                  },
+                  "unit": {
+                    "$ref": "#/components/schemas/NonEmptyString"
+                  },
+                  "amount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "unit_type",
+                  "unit",
+                  "amount"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "nullable": true,
+            "readOnly": true
+          },
+          "adjusted_values": {
+            "type": "object",
+            "properties": {
+              "source": {
+                "type": "object",
+                "properties": {
+                  "unit_type": {
+                    "$ref": "#/components/schemas/UnitTypes"
+                  },
+                  "unit": {
+                    "$ref": "#/components/schemas/NonEmptyString"
+                  },
+                  "amount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "unit_type",
+                  "unit",
+                  "amount"
+                ],
+                "additionalProperties": false
+              },
+              "destination": {
+                "type": "object",
+                "properties": {
+                  "unit_type": {
+                    "$ref": "#/components/schemas/UnitTypes"
+                  },
+                  "unit": {
+                    "$ref": "#/components/schemas/NonEmptyString"
+                  },
+                  "amount": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "unit_type",
+                  "unit",
+                  "amount"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "nullable": true,
+            "readOnly": true
+          },
+          "sender": {
+            "type": "object",
+            "properties": {
+              "last_name": {
+                "$ref": "#/components/schemas/NonEmptyString"
+              },
+              "first_name": {
+                "$ref": "#/components/schemas/NonEmptyString"
+              },
+              "middle_name": {
+                "$ref": "#/components/schemas/NonEmptyString"
+              },
+              "nationality_country_iso_code": {
+                "$ref": "#/components/schemas/ISO-3166-1_Alpha-3"
+              },
+              "mobile_number": {
+                "$ref": "#/components/schemas/E.164"
+              },
+              "email": {
+                "$ref": "#/components/schemas/NonEmptyString"
+              }
+            },
+            "nullable": true
+          },
+          "beneficiary": {
+            "type": "object",
+            "properties": {
+              "last_name": {
+                "$ref": "#/components/schemas/NonEmptyString"
+              },
+              "first_name": {
+                "$ref": "#/components/schemas/NonEmptyString"
+              },
+              "middle_name": {
+                "$ref": "#/components/schemas/NonEmptyString"
+              },
+              "nationality_country_iso_code": {
+                "$ref": "#/components/schemas/ISO-3166-1_Alpha-3"
+              },
+              "mobile_number": {
+                "$ref": "#/components/schemas/E.164"
+              },
+              "email": {
+                "$ref": "#/components/schemas/NonEmptyString"
+              }
+            },
+            "nullable": true
+          },
+          "debit_party_identifier": {
+            "type": "object",
+            "properties": {
+              "mobile_number": {
+                "$ref": "#/components/schemas/E.164"
+              },
+              "account_number": {
+                "$ref": "#/components/schemas/NonEmptyString"
+              }
+            },
+            "nullable": true
+          },
+          "credit_party_identifier": {
+            "type": "object",
+            "properties": {
+              "mobile_number": {
+                "$ref": "#/components/schemas/E.164"
+              },
+              "account_number": {
+                "$ref": "#/components/schemas/NonEmptyString"
+              }
+            }
+          }
+        }
+      },
+      "Balance": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "unit_type": {
+            "$ref": "#/components/schemas/UnitTypes"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "available": {
+            "type": "number"
+          },
+          "holding": {
+            "type": "number"
+          },
+          "credit_limit": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "unit_type",
+          "unit",
+          "available",
+          "holding",
+          "credit_limit"
+        ],
+        "additionalProperties": false
+      },
+      "Rates": {
+        "type": "object",
+        "properties": {
+          "base": {
+            "type": "number"
+          },
+          "wholesale": {
+            "type": "number"
+          },
+          "retail": {
+            "type": "number",
+            "nullable": true
+          }
+        },
+        "required": [
+          "base",
+          "wholesale",
+          "retail"
+        ],
+        "additionalProperties": false
+      },
+      "Errors": {
+        "type": "object",
+        "properties": {
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "integer"
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "code",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "errors"
+        ]
+      },
+      "ISO-4217": {
+        "type": "string",
+        "pattern": "^[A-Z]{3}$"
+      },
+      "ISO-3166-1_Alpha-3": {
+        "type": "string",
+        "pattern": "^[A-Z]{3}$"
+      },
+      "X-ISO-3166-2": {
+        "type": "string",
+        "pattern": "^[A-Z]{2}-[A-Z0-9]{2,3}(?:-[A-Z]{2})?$"
+      },
+      "E.164": {
+        "type": "string",
+        "pattern": "^\\+[1-9][0-9]{6,14}$"
+      },
+      "NonEmptyString": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "\\S"
+      },
+      "ServiceID": {
+        "type": "integer",
+        "format": "int32",
+        "minimum": 1
+      },
+      "OperatorID": {
+        "type": "integer",
+        "format": "int32",
+        "minimum": 1
+      },
+      "ProductID": {
+        "type": "integer",
+        "format": "int32",
+        "minimum": 1
+      },
+      "PromotionID": {
+        "type": "integer",
+        "format": "int32",
+        "minimum": 1
+      },
+      "TransactionID": {
+        "type": "integer",
+        "format": "int64",
+        "minimum": 1
+      },
+      "FixedBenefitAmount": {
+        "type": "object",
+        "properties": {
+          "base": {
+            "type": "number"
+          },
+          "promotion_bonus": {
+            "type": "number",
+            "default": 0
+          },
+          "total_excluding_tax": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "base",
+          "promotion_bonus",
+          "total_excluding_tax"
+        ],
+        "additionalProperties": false
+      },
+      "RangeBenefitAmountWithoutIncrement": {
+        "type": "object",
+        "properties": {
+          "base": {
+            "type": "object",
+            "properties": {
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "min",
+              "max"
+            ],
+            "additionalProperties": false
+          },
+          "promotion_bonus": {
+            "type": "object",
+            "properties": {
+              "min": {
+                "type": "number",
+                "default": 0
+              },
+              "max": {
+                "type": "number",
+                "default": 0
+              }
+            },
+            "required": [
+              "min",
+              "max"
+            ],
+            "additionalProperties": false
+          },
+          "total_excluding_tax": {
+            "type": "object",
+            "properties": {
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "min",
+              "max"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "base",
+          "promotion_bonus",
+          "total_excluding_tax"
+        ],
+        "additionalProperties": false
+      },
+      "RangeWithoutIncrement": {
+        "type": "object",
+        "properties": {
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          }
+        }
+      },
+      "Range": {
+        "type": "object",
+        "properties": {
+          "min": {
+            "type": "number"
+          },
+          "max": {
+            "type": "number"
+          },
+          "increment": {
+            "type": "number"
+          }
+        }
+      },
+      "PIN": {
+        "type": "object",
+        "properties": {
+          "usage_info": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "validity": {
+            "type": "object",
+            "properties": {
+              "unit": {
+                "$ref": "#/components/schemas/TimeUnits"
+              },
+              "quantity": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "unit",
+              "quantity"
+            ],
+            "nullable": true,
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "usage_info",
+          "validity"
+        ],
+        "additionalProperties": false
+      },
+      "CalculationModes": {
+        "type": "string",
+        "enum": [
+          "SOURCE_AMOUNT",
+          "DESTINATION_AMOUNT"
+        ]
+      },
+      "AvailabilityZones": {
+        "type": "string",
+        "enum": [
+          "DOMESTIC",
+          "INTERNATIONAL"
+        ]
+      },
+      "UnitTypes": {
+        "type": "string",
+        "enum": [
+          "CURRENCY"
+        ]
+      },
+      "ProductTypes": {
+        "type": "string",
+        "enum": [
+          "FIXED_VALUE_RECHARGE",
+          "RANGED_VALUE_RECHARGE",
+          "FIXED_VALUE_PIN_PURCHASE",
+          "RANGED_VALUE_PIN_PURCHASE",
+          "FIXED_VALUE_PAYMENT"
+        ]
+      },
+      "BenefitTypes": {
+        "type": "string",
+        "enum": [
+          "TALKTIME",
+          "DATA",
+          "SMS",
+          "PAYMENT",
+          "CREDITS"
+        ]
+      },
+      "BenefitUnitTypes": {
+        "type": "string",
+        "enum": [
+          "TIME",
+          "DATA",
+          "QUANTITY",
+          "CURRENCY"
+        ]
+      },
+      "TimeUnits": {
+        "type": "string",
+        "enum": [
+          "HOUR",
+          "DAY",
+          "WEEK",
+          "MONTH"
+        ]
+      }
+    },
+    "parameters": {
+      "Page": {
+        "name": "page",
+        "description": "Page number",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "format": "int32",
+          "minimum": 1,
+          "default": 1
+        }
+      },
+      "PerPage": {
+        "name": "per_page",
+        "description": "Number of records per page",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "format": "int32",
+          "minimum": 1,
+          "maximum": 100,
+          "default": 50
+        }
+      }
+    },
+    "headers": {
+      "X-Total": {
+        "description": "Total number of records",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "X-Total-Pages": {
+        "description": "Total number of pages",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "X-Per-Page": {
+        "description": "Number of records per page",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "X-Page": {
+        "description": "Current page number",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "X-Next-Page": {
+        "description": "Next page number (if any)",
+        "schema": {
+          "type": "integer"
+        }
+      },
+      "X-Prev-Page": {
+        "description": "Previous page number (if any)",
+        "schema": {
+          "type": "integer"
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "BasicAuth": []
+    }
+  ]
+}

@@ -1,0 +1,343 @@
+{
+	"info": {
+		"_postman_id": "b632508e-65b1-472a-90b7-93a87ec16c75",
+		"name": "Inbound_Stag_20190614",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "authenticate",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"Username\": \"inboundmyr\",\r\n  \"AuthKey\": \"WTvApJxuAaeKk5NJy1e3rg==\",\r\n  \"AgentCode\": \"GMKOR394765\"\r\n}"
+				},
+				"url": {
+					"raw": "http://gmeuat.gmeremit.com:5020/api/inbound/authenticate",
+					"protocol": "http",
+					"host": [
+						"gmeuat",
+						"gmeremit",
+						"com"
+					],
+					"port": "5020",
+					"path": [
+						"api",
+						"inbound",
+						"authenticate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Calculate exrate",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "o28LSvFt3hUqR9B8i6cdzd7/BL0BI5KTnY8iKbeWKcEfYBerxWh3OpkNLigH63srp+f0HIu4rqxnYi0cxYkSEzOejRaWvw6ziya+UG8wJsZwlgNXCUMyszlTEFiW3rVfXa///43XX4u7A3GOlPLrcEwTEMQWnJSXqgted0QAOwonrLkj6KoqaEdifvhbl+ndzOzb30jcvmg9AizRQH7CTSJdSbSeuAPQQ+zpn1atzS1i+61fTkGTMaZ8zAPH+zhHwkZgpGmj0UJVV697LcPyUoidSscJsaSgTXx+gQoh10qwOMXrNwBdk6+KtTs5CGKYahOBi4icUlUOIB/iRWvFxrtlWY8gN6SZl+F1lZZzSxpPdK3h1YrwcOYdi5C8oGjpuR5YV3y5rGrOobc/sQ0bDJunemA2w125kUUKWgT5l+/CT3AtbYdVj3fFga2Dad0Kq+JCJV8zX0RQCtzGcVVSul0NVv44+9q1TdQimxsuTTA=",
+						"type": "text"
+					},
+					{
+						"key": "Client",
+						"value": "39587YT398@FBQOW8RY3#948R7GB@CNEQW987GF87$TD18$1981..919@@##joghndvberteiru",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"Head\": {\r\n    \"Username\": \"inboundmyr\",\r\n    \"AgentCode\": \"GMKOR394765\"\r\n  },\r\n  \"Body\": {\r\n    \"ReceivingCountry\": \"KR\",\r\n    \"SendingCountry\": \"MY\",\r\n    \"ReceivingCurrency\": \"KRW\"\r\n  },\r\n  \"Signature\": \"RYgehCUPQFr6RYxdSCypdN5ZE9Qxjxq9s33h6FP2xBUTY120SRwQsxilyq9NyBD6DxcCI8LK4e+A1dD8UieegN5DHFweCFL5qucnviTM1Fs=\",\r\n   \"ProcessIdentifier\": \"77426C14-722C-4555-895A-B941E4E34CA7\"\r\n}"
+				},
+				"url": {
+					"raw": "http://gmeuat.gmeremit.com:5020/api/inbound/CalculateExRate",
+					"protocol": "http",
+					"host": [
+						"gmeuat",
+						"gmeremit",
+						"com"
+					],
+					"port": "5020",
+					"path": [
+						"api",
+						"inbound",
+						"CalculateExRate"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "SendTxn",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "o28LSvFt3hUqR9B8i6cdzd7/BL0BI5KTnY8iKbeWKcEfYBerxWh3OpkNLigH63srp+f0HIu4rqxnYi0cxYkSEzOejRaWvw6ziya+UG8wJsZwlgNXCUMyszlTEFiW3rVfXa///43XX4u7A3GOlPLrcEwTEMQWnJSXqgted0QAOwonrLkj6KoqaEdifvhbl+ndzOzb30jcvmg9AizRQH7CTSJdSbSeuAPQQ+zpn1atzS1i+61fTkGTMaZ8zAPH+zhHwkZgpGmj0UJVV697LcPyUoidSscJsaSgTXx+gQoh10qwOMXrNwBdk6+KtTs5CGKYahOBi4icUlUOIB/iRWvFxrtlWY8gN6SZl+F1lZZzSxpPdK3h1YrwcOYdi5C8oGjpuR5YV3y5rGrOobc/sQ0bDJunemA2w125kUUKWgT5l+/CT3AtbYdVj3fFga2Dad0Kq+JCJV8zX0RQCtzGcVVSul0NVv44+9q1TdQimxsuTTA=",
+						"type": "text"
+					},
+					{
+						"key": "Client",
+						"value": "39587YT398@FBQOW8RY3#948R7GB@CNEQW987GF87$TD18$1981..919@@##joghndvberteiru",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"Head\": {\n        \"Username\": \"inboundmyr\",\n        \"AgentCode\": \"GMKOR394765\"\n    },\n    \"Body\": {\n        \"Sender\": {\n            \"TransferReason\": \"Loan\",\n            \"FundSource\": \"Part time job\",\n            \"FirstName\": \"Chetan\",\n            \"MiddleName\": \"\",\n            \"LastName\": \"Shrestha\",\n            \"NativeCountry\": \"NP\",\n            \"City\": \"KATHMANDU\",\n            \"Address\": \"SEOUL\",\n            \"IdType\": \"8008\",\n            \"IdNumber\": \"112233\",\n            \"Mobile\": \"01012345665\",\n            \"Email\": \"cshr@mailinator.com\"\n        },\n        \"Receiver\": {\n            \"Bank\": \"034\",\n            \"AccountNo\": \"123456\",\n            \"Relation\": \"2109\",\n            \"FirstName\": \"RAM\",\n            \"MiddleName\": \"KUMAR\",\n            \"LastName\": \"CHALISE\",\n            \"NativeCountry\": \"NP\",\n            \"City\": \"ARUBARI\",\n            \"Address\": \"SEOUL\",\n            \"Mobile\": \"01012345678\"\n        },\n        \"Detail\": {\n            \"ForexSSessionId\": \"EA2C241D-6390-44F9-938D-A3A22B5610D5\",\n            \"PartnerTranNo\": \"8098002\",\n            \"PaymentMethod\": \"BD\",\n            \"SendingAmount\": \"48.48\",\n            \"SendingCurrency\": \"MYR\",\n            \"SendingCountry\": \"MY\",\n            \"ReceivingAmount\": \"13824\",\n            \"ReceivingCurrency\": \"KRW\",\n            \"ReceivingCountry\": \"KR\",\n            \"ExRate\": \"1152\",\n            \"UsdAmount\": \"12\"\n        }\n    },\n    \"Signature\": \"RYgehCUPQFr6RYxdSCypdIG3l4TMETVkaRVr5VbRZ62qknfZs0PXOYomYugOZ5J9aAEdp8puQf4vW0KdtZpohjS4yD9HtScFn0qCO8/cS4XSF/U1dcb8fLKD9gLXf0pht5ii/XxJhNsJ9aEHWe+vWU8+J9z/rz0cyfsh58vL/tdCmY1is4VyKfT1EoTuttylebZj9PfyduCX3zFeRwEVhcPy64LM2dOm7KvULx+XnqyeRb4vYrDREWIs/GbUbQVZcmdQGGt9uclBBPZRjj/VR7XKheDalNYf3TqiB8qBMHM6CqtKN1PqND1bdoqfvDhoaing0l90NGgNIfUex7wIb+8C9uvAACX4XkDsb1rUF8s=\",\n    \"ProcessIdentifier\": \"77426C14-722C-4555-895A-B941E4E34CA7\"\n}"
+				},
+				"url": {
+					"raw": "http://gmeuat.gmeremit.com:5020/api/inbound/sendTransaction",
+					"protocol": "http",
+					"host": [
+						"gmeuat",
+						"gmeremit",
+						"com"
+					],
+					"port": "5020",
+					"path": [
+						"api",
+						"inbound",
+						"sendTransaction"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "CommitTransaction",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "o28LSvFt3hUqR9B8i6cdzd7/BL0BI5KTnY8iKbeWKcEfYBerxWh3OpkNLigH63srp+f0HIu4rqxnYi0cxYkSEzOejRaWvw6ziya+UG8wJsZwlgNXCUMyszlTEFiW3rVfXa///43XX4u7A3GOlPLrcEwTEMQWnJSXqgted0QAOwonrLkj6KoqaEdifvhbl+ndzOzb30jcvmg9AizRQH7CTSJdSbSeuAPQQ+zpn1atzS1i+61fTkGTMaZ8zAPH+zhHwkZgpGmj0UJVV697LcPyUoidSscJsaSgTXx+gQoh10qwOMXrNwBdk6+KtTs5CGKYahOBi4icUlUOIB/iRWvFxrtlWY8gN6SZl+F1lZZzSxpPdK3h1YrwcOYdi5C8oGjpuR5YV3y5rGrOobc/sQ0bDJunemA2w125kUUKWgT5l+/CT3AtbYdVj3fFga2Dad0Kq+JCJV8zX0RQCtzGcVVSul0NVv44+9q1TdQimxsuTTA=",
+						"type": "text"
+					},
+					{
+						"key": "Client",
+						"value": "39587YT398@FBQOW8RY3#948R7GB@CNEQW987GF87$TD18$1981..919@@##joghndvberteiru",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"Head\": {\r\n    \"Username\": \"inboundmyr\",\r\n    \"AgentCode\": \"GMKOR394765\"\r\n  },\r\n  \"Body\": {\r\n\t    \"ControlNo\": \"80141058266\",\r\n    \"PartnerTranNo\": \"8098002\",\r\n    \"IsApproved\": 1\r\n  },\r\n  \"Signature\": \"RYgehCUPQFr6RYxdSCypdOcdX8Zwo8PI3dElbC77YHoQCBB7lJUQQUSBgtCi0ZmqUcCjsFduOTet9wHs1RZPtRBP2a4RnuMU5z6qhG2FXYA=\",\r\n  \"ProcessIdentifier\": \"C879EC36-6407-46B1-B734-25911C102FD6\"\r\n}\r\n  "
+				},
+				"url": {
+					"raw": "http://gmeuat.gmeremit.com:5020/api/inbound/CommitTransaction",
+					"protocol": "http",
+					"host": [
+						"gmeuat",
+						"gmeremit",
+						"com"
+					],
+					"port": "5020",
+					"path": [
+						"api",
+						"inbound",
+						"CommitTransaction"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "AmendTransaction",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "o28LSvFt3hUqR9B8i6cdzd7/BL0BI5KTnY8iKbeWKcEfYBerxWh3OpkNLigH63srp+f0HIu4rqxnYi0cxYkSEzOejRaWvw6ziya+UG8wJsaJCnURtbLVa4ATZu1zao+TenZs1vTYsobuHzM51Fp/t3nEntTV9jytVatpZQ2OeU1R6sO3J5tDs9vqGxP90oD8tyRSod90U9cIS8DD/ebKTeOfMcOoftvHvit2jSyi800l4rTQLf76vqnFbQc6RIHRLo5PK0JsLRZ1TWbhRRrj3JYKd6ihJKTv1zyj8nk6MYdJkkeI+i1zUptDPZMrVoUYICS60igZdIweb+OIoimJ3EurqRDIZVh7701oW9BWXaw+QqV9+HPOf5E3Cn5rJLX0nkD295Ge26REoClCemRR9Mo3dbRUA+KzpHzI4P5EDCrE3yswaNgvgtgj2qsu8KYvj1yf2dkfu78VX4Zo8e5Ws1vl/B5bDfHXl5QU4/Qjz1E=",
+						"type": "text"
+					},
+					{
+						"key": "Client",
+						"value": "39587YT398@FBQOW8RY3#948R7GB@CNEQW987GF87$TD18$1981..919@@##joghndvberteiru",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"Head\": {\r\n    \"Username\": \"inboundmyr\",\r\n    \"AgentCode\": \"GMKOR394765\"\r\n  },\r\n  \"Body\": {\r\n    \"ControlNo\": \"80141058266\",\r\n    \"PartnerTranNo\": \"8098002\",\r\n    \"TranNo\": \"4\",\r\n    \"Sender\": {\r\n      \"FirstName\": \"KAMAL\",\r\n      \"MiddleName\": \"\",\r\n      \"LastName\": \"KHATRI\",\r\n      \"IdType\": \"8008\",\r\n      \"IdNumber\": \"112233\"\r\n    },\r\n    \"Receiver\": {\r\n      \"FirstName\": \"PREYEA\",\r\n      \"MiddleName\": \"RANJAN\",\r\n      \"LastName\": \"REGMI\",\r\n      \"Bank\": \"088\",\r\n      \"AccountNo\": \"123456\",\r\n      \"Mobile\": \"01023456789\"\r\n    }\r\n  },\r\n  \"Signature\": \"RYgehCUPQFr6RYxdSCypdOcdX8Zwo8PI3dElbC77YHoQZ0j+IshoZtQXMI4/Lits5b2WS6eI8ejZluG9DyiU/LNw9KRwS1d0MIRDg9k5x+rDt/xKQkgHX7AhqX48hRa1tkp6DKn2hBPSvwEI+koSKLVB2GU+5lz7U9BHYkiXHx0=\",\r\n  \"ProcessIdentifier\": \"D6D6513E-A44C-4DD1-B9CD-D0315FC30FD1\"\r\n}"
+				},
+				"url": {
+					"raw": "http://gmeuat.gmeremit.com:5020/api/inbound/AmendTransaction",
+					"protocol": "http",
+					"host": [
+						"gmeuat",
+						"gmeremit",
+						"com"
+					],
+					"port": "5020",
+					"path": [
+						"api",
+						"inbound",
+						"AmendTransaction"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "GetEnumerations",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "o28LSvFt3hUqR9B8i6cdzd7/BL0BI5KTnY8iKbeWKcEfYBerxWh3OpkNLigH63srp+f0HIu4rqxnYi0cxYkSEzOejRaWvw6ziya+UG8wJsYMXdKZl+Juve0Yvrsb1D1kR+9KL8TL1v3/nY1B0HEezSvAzWsywO+bVKWDtUr4+Gp46ycx1UfgMjUEH3wyFodJXi5GnB/lXGmYN+ERz1rIkIiIVKfI3C31K0cmgPtn0sD17EV/hsq4MuyzqdVAt3F2v16NLJE6gaoMrVE/s3G76dyHrngZSWaZVQnSTF7RTrbTjv0IV7rAogjHOn+9jZhw2GBKY4y1iDcYbRvgigbmOB4Qlz/7rKNildanqw1DrXyuLNboLiofKjbkgm7aMcm1ROa+q7D0uICAj3dam8Rn0TfQ0gbUbdT+F8pfcBRXPu2smQrx2LETKQkaF5LheP3C30KAX5RO7gAIWQ9Jzg7KOLLtRp/LnSfAexPvzB/0vbU=",
+						"type": "text"
+					},
+					{
+						"key": "Client",
+						"value": "39587YT398@FBQOW8RY3#948R7GB@CNEQW987GF87$TD18$1981..919@@##joghndvberteiru",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"Head\": {\r\n    \"Username\": \"inboundmyr\",\r\n    \"AgentCode\": \"GMKOR394765\"\r\n  },\r\n  \"Body\": {\r\n    \"Type\": \"paymentmethod\"\r\n  },\r\n  \"Signature\": \"RYgehCUPQFr6RYxdSCypdBG7qzOsIZQjkI3UqnXok1B8MLG7Vjdv2XbbgHcYDesxGsXI7vQlVKiCGH/lMLmXKsABzBIuLOw1BmbBDxdcI5E=\",\r\n  \"ProcessIdentifier\": \"48D3F40F-75CE-4D99-B7B2-1CF984140D1B\"\r\n}"
+				},
+				"url": {
+					"raw": "http://gmeuat.gmeremit.com:5020/api/inbound/GetEnumerations",
+					"protocol": "http",
+					"host": [
+						"gmeuat",
+						"gmeremit",
+						"com"
+					],
+					"port": "5020",
+					"path": [
+						"api",
+						"inbound",
+						"GetEnumerations"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "CheckStatus",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "o28LSvFt3hUqR9B8i6cdzd7/BL0BI5KTnY8iKbeWKcEfYBerxWh3OpkNLigH63srp+f0HIu4rqxnYi0cxYkSEzOejRaWvw6ziya+UG8wJsb6yKahQbr2T+kNfgHA6z+xW8JfvG18GB7Dy8XDihYrl7xYv+c7YexvjBR7BDctdnbcjNNohFeDiPaILMiaviZI5j7a7FNxHgVJK5F8MHNednSAJ2ADuuHbjY24vplArLmHPsKvu6ag50iIHluRWn0wqkcUmtOUcw5o3wjka9r/3GxMjwSCJ/CNUY9ZomQH1sjDqUwx9XQ2WRcHq+gKfzBEqlmLqAAAmLdZC39fJU5B+DfL0XXneoudCC7fyVD2WqMHsl/chSg8Xs0SV6fn4biogwPjK8jvjHGE0AVdtOxGnsiWKK9uu6na8DrWvGj9mrqRWrGRnfoMNZLbr3y3Ino8bGS5t8WmT2g6Wh0fJuYiByjjgr778JrYUM8LPhIKetI=",
+						"type": "text"
+					},
+					{
+						"key": "Client",
+						"value": "39587YT398@FBQOW8RY3#948R7GB@CNEQW987GF87$TD18$1981..919@@##joghndvberteiru",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"Head\": {\r\n    \"Username\": \"inboundmyr\",\r\n    \"AgentCode\": \"GMKOR394765\"\r\n  },\r\n  \"Body\": {\r\n    \"ControlNo\": \"80141058266\",\r\n    \"PartnerTranNo\": \"8098002\",\r\n    \"TranNo\": \"4\"\r\n  },\r\n  \"Signature\": \"RYgehCUPQFr6RYxdSCypdOcdX8Zwo8PI3dElbC77YHqB16isFXJbrlPznt73t9UGTDDaYFEZkDT2O8e2iZ4zPYSwmt8ApUjwmJLtog0Q5ZM=\",\r\n  \"ProcessIdentifier\": \"48AC94CB-F8F6-4E83-8DC0-A06C69F9288F\"\r\n}"
+				},
+				"url": {
+					"raw": "http://gmeuat.gmeremit.com:5020/api/inbound/CheckStatus",
+					"protocol": "http",
+					"host": [
+						"gmeuat",
+						"gmeremit",
+						"com"
+					],
+					"port": "5020",
+					"path": [
+						"api",
+						"inbound",
+						"CheckStatus"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "CancelTransaction",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Authorization",
+						"value": "o28LSvFt3hUqR9B8i6cdzd7/BL0BI5KTnY8iKbeWKcEfYBerxWh3OpkNLigH63srp+f0HIu4rqxnYi0cxYkSEzOejRaWvw6ziya+UG8wJsZwlgNXCUMyszlTEFiW3rVfXa///43XX4u7A3GOlPLrcEwTEMQWnJSXqgted0QAOwonrLkj6KoqaEdifvhbl+ndzOzb30jcvmg9AizRQH7CTSJdSbSeuAPQQ+zpn1atzS1i+61fTkGTMaZ8zAPH+zhHwkZgpGmj0UJVV697LcPyUoidSscJsaSgTXx+gQoh10qwOMXrNwBdk6+KtTs5CGKYahOBi4icUlUOIB/iRWvFxrtlWY8gN6SZl+F1lZZzSxpPdK3h1YrwcOYdi5C8oGjpuR5YV3y5rGrOobc/sQ0bDJunemA2w125kUUKWgT5l+/CT3AtbYdVj3fFga2Dad0Kq+JCJV8zX0RQCtzGcVVSul0NVv44+9q1TdQimxsuTTA=",
+						"type": "text"
+					},
+					{
+						"key": "Client",
+						"value": "39587YT398@FBQOW8RY3#948R7GB@CNEQW987GF87$TD18$1981..919@@##joghndvberteiru",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"Head\": {\r\n    \"Username\": \"inboundmyr\",\r\n    \"AgentCode\": \"GMKOR394765\"\r\n  },\r\n  \"Body\": {\r\n    \"ControlNo\": \"80141058266\",\r\n    \"PartnerTranNo\": \"8098002\",\r\n    \"TranNo\": \"4\",\r\n    \"TranDate\": \"2019-06-21\",\r\n    \"Reason\": \"Mistake transaction\"\r\n  },\r\n  \"Signature\": \"RYgehCUPQFr6RYxdSCypdOcdX8Zwo8PI3dElbC77YHpiJ8BeGDGXwgVDQY6b/jLQW9de39mRlBIrFPM8ILOnV5ZyM2UrQ9oSCz042Y/+lmPHXcenVYUJhgioQY3awKoRA++IEgNGQIt8YraPEaLcqg==\",\r\n  \"ProcessIdentifier\": \"EC55CAFC-C592-49A3-92D0-F35591166F9D\"\r\n}"
+				},
+				"url": {
+					"raw": "http://gmeuat.gmeremit.com:5020/api/inbound/CancelTransaction",
+					"protocol": "http",
+					"host": [
+						"gmeuat",
+						"gmeremit",
+						"com"
+					],
+					"port": "5020",
+					"path": [
+						"api",
+						"inbound",
+						"CancelTransaction"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}
